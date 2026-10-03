@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบชำระเงิน - Payment Gateway</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- [จุดที่ 2] เพิ่ม Script ของ Netlify Identity ไว้ล็อกอิน -->
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+    <style>
+        :root {
+            /* Palette: Rosy Brown & Light Gray */
+            --primary-rosy: #9B8384;          /* Rosy Brown Main */
+            --primary-rosy-hover: #846D6E;    /* Darker Rosy Brown */
+            --light-gray: #E8E7E7;           /* Light Gray */
+            --bg-color: #E2DFDF;              /* Soft Gray Background */
+            --soft-rosy-bg: #F4ECEC;          /* Soft Muted Rosy Cream */
+            --card-bg: #FFFFFF;
+            --text-main: #2C2829;             /* Dark Neutral Text */
+            --text-muted: #7A6F70;
+            --border-soft: #E5DCDD;
+            --shadow-soft: 0 16px 36px rgba(155, 131, 132, 0.12);
+            --transition-smooth: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(44, 40, 41, 0.92);
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            transition: var(--transition-smooth);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            top: 25px;
+            opacity: 1;
+        }
+
+        .page {
+            display: none;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .page.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ================= CARD STYLE (CARRD PROFILE) ================= */
+        .carrd-profile {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .carrd-header-bar {
+            height: 40px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+        }
+
+        .menu-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            cursor: pointer;
+            width: 18px;
+        }
+
+        .menu-icon span {
+            height: 2.5px;
+            background: #1a1a1a;
+            border-radius: 2px;
+            width: 100%;
+        }
+
+        .carrd-cover {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .carrd-body {
+            padding: 0 20px 24px 20px;
+            position: relative;
+        }
+
+        .profile-row {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-end;
+            margin-top: -45px;
+            margin-bottom: 12px;
+        }
+
+        .profile-avatar {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            object-fit: cover;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .carrd-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 10px;
+        }
+
+        .carrd-quote {
+            font-size: 0.85rem;
+            color: #333;
+            line-height: 1.45;
+            margin-bottom: 22px;
+            font-weight: 400;
+        }
+
+        /* Next Page Button Style (Small Oval) */
+        .carrd-footer-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        .btn-next-oval {
+            background: var(--light-gray);
+            color: #4a4a4a;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .btn-next-oval:hover {
+            background: var(--primary-rosy);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(155, 131, 132, 0.25);
+        }
+
+        .btn-next-oval span.arrow {
+            font-size: 0.85rem;
+        }
+
+        .carrd-footer-text {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        /* ================= GENERAL INNER CARDS ================= */
+        .card {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 28px 22px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-soft);
+            text-align: center;
+            position: relative;
+        }
+
+        /* Navigation Tabs (Oval Style) */
+        .tab-group {
+            display: flex;
+            background: var(--soft-rosy-bg);
+            padding: 5px;
+            border-radius: 50px;
+            gap: 6px;
+            margin-bottom: 22px;
+            border: 1px solid var(--border-soft);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 50px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-rosy);
+            box-shadow: 0 4px 12px rgba(155, 131, 132, 0.12);
+            font-weight: 600;
+        }
+
+        /* QR Payment Section */
+        .qr-box {
+            background: var(--soft-rosy-bg);
+            padding: 18px;
+            border-radius: 24px;
+            display: inline-block;
+            margin-bottom: 18px;
+            border: 1.5px dashed var(--primary-rosy);
+            position: relative;
+        }
+
+        .qr-box img {
+            width: 180px;
+            height: 180px;
+            border-radius: 16px;
+            display: block;
+            user-select: none;
+        }
+
+        /* Info Item (Oval Style) */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .info-item {
+            background: var(--soft-rosy-bg);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.88rem;
+            border: 1px solid var(--border-soft);
+        }
+
+        .info-label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .info-val {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .btn-copy {
+            background: #fff;
+            color: var(--primary-rosy);
+            border: 1px solid var(--border-soft);
+            padding: 5px 14px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-copy:hover {
+            background: var(--primary-rosy);
+            color: #fff;
+            border-color: var(--primary-rosy);
+        }
+
+        /* Note Box (Oval Style) */
+        .note-box {
+            background: #FFF;
+            border: 1px solid var(--border-soft);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            color: var(--text-main);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        .input-label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 6px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
+        /* Amount Input (Oval Style) */
+        .amount-input {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 50px;
+            border: 1px solid var(--border-soft);
+            background: var(--soft-rosy-bg);
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition-smooth);
+            font-family: 'Prompt';
+            font-weight: 600;
+        }
+
+        .amount-input:focus {
+            border-color: var(--primary-rosy);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(155, 131, 132, 0.15);
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+
+        /* Primary Button (Oval Style) */
+        .btn-primary {
+            width: 100%;
+            background: var(--primary-rosy);
+            color: #fff;
+            border: none;
+            padding: 14px;
+            border-radius: 50px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(155, 131, 132, 0.25);
+            transition: var(--transition-smooth);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-rosy-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(155, 131, 132, 0.35);
+        }
+
+        /* Printer Animation Styles */
+        .printer-wrapper {
+            position: relative;
+            padding-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .printer-head {
+            width: 100%;
+            height: 40px;
+            background: var(--text-main);
+            border-radius: 12px 12px 6px 6px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+        }
+
+        .printer-slot {
+            width: 80%;
+            height: 4px;
+            background: #111;
+            position: absolute;
+            bottom: 6px;
+            left: 10%;
+            border-radius: 3px;
+        }
+
+        .paper-roll {
+            background: #fff;
+            width: 85%;
+            margin: 0 auto;
+            border: 1px solid var(--border-soft);
+            border-top: none;
+            border-radius: 0 0 18px 18px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.04);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 2.5s ease-in-out;
+            position: relative;
+            z-index: 1;
+        }
+
+        .paper-roll.printing {
+            max-height: 480px;
+        }
+
+        .receipt-content {
+            padding: 22px 18px;
+            text-align: left;
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+
+        .receipt-header {
+            text-align: center;
+            border-bottom: 1.5px dashed var(--border-soft);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .tear-hint {
+            display: none;
+            margin-top: 15px;
+            color: var(--primary-rosy);
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            animation: bounce 1.2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(5px); }
+        }
+
+        .receipt-detached {
+            animation: detach 0.6s ease-out forwards;
+        }
+
+        @keyframes detach {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            50% { transform: translateY(20px) rotate(2deg); opacity: 0.8; }
+            100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast">Copy successful !</div>
+
+    <div class="container">
+        <!-- ================= PAGE 1: CARRD STYLE PROFILE CARD ================= -->
+        <div class="page active" id="page-home">
+            <div class="carrd-profile">
+                <div class="carrd-header-bar">
+                    <div class="menu-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+
+                <!-- Cover Image -->
+                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" alt="Cover" class="carrd-cover" id="cms-cover">
+
+                <!-- Body Content -->
+                <div class="carrd-body">
+                    <div class="profile-row">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Profile" class="profile-avatar" id="cms-avatar">
+                    </div>
+
+                    <h2 class="carrd-title" id="cms-shop-name">CHU Băobao</h2>
+
+                    <p class="carrd-quote" id="cms-shop-desc">
+                        ૮꒰ ּ 𓂂o  ֹ༝ ‹𓂂 ꒱ა ❤︎ Welcome to " Băobao Station " ka !   Please pay for your ticket and attach the receipt.
+                    </p>
+
+                    <div class="carrd-footer-row">
+                        <button class="btn-next-oval" onclick="switchPage('bank')">
+                            <span>next page</span>
+                            <span class="arrow">➔</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="carrd-footer-text">( Thank you for choosing us to be a part of your journey )</div>
+        </div>
+
+        <!-- ================= PAGE 2: BANK PAYMENT ================= -->
+        <div class="card page" id="page-bank">
+            <div class="tab-group">
+                <button class="tab-btn active" onclick="switchPage('bank')">SCB bank</button>
+                <button class="tab-btn" onclick="switchPage('wallet')">TMN wallet</button>
+            </div>
+
+            <div class="qr-box" oncontextmenu="handleQRHold(event)">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PromptPay-Bank-0123456789" alt="Bank QR" id="qr-bank">
+            </div>
+
+            <div class="info-list">
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">เลขบัญชีธนาคาร</div>
+                        <div class="info-val" id="bank-acc">505-4-59549-7</div>
+                    </div>
+                    <button class="btn-copy" onclick="copyText('bank-acc')">คัดลอก</button>
+                </div>
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">ชื่อบัญชี</div>
+                        <div class="info-val" id="cms-bank-name">ms.vorawan n'</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <span><strong>บันทึกช่วยจำ:</strong> <span id="bank-note">ยินดีโอนให้วรวรรณเอง</span></span>
+                <button class="btn-copy" onclick="copyText('bank-note')">คัดลอก</button>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="user-amount-bank">ระบุยอดเงินที่โอน (บาท):</label>
+                <input type="number" id="user-amount-bank" class="amount-input" placeholder="0.00" step="any">
+            </div>
+
+            <p class="warning-text">โปรดตรวจสอบข้อมูลให้ถูกต้องก่อนกดชำระเงิน </p>
+
+            <button class="btn-primary" onclick="startPrinting('bank')">ขั้นตอนถัดไป ( Next step )</button>
+        </div>
+
+        <!-- ================= PAGE 3: WALLET PAYMENT ================= -->
+        <div class="card page" id="page-wallet">
+            <div class="tab-group">
+                <button class="tab-btn" onclick="switchPage('bank')">SCB bank</button>
+                <button class="tab-btn active" onclick="switchPage('wallet')">TMN wallet</button>
+            </div>
+
+            <div class="qr-box" oncontextmenu="handleQRHold(event)">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TrueMoney-Wallet-0899999999" alt="Wallet QR" id="qr-wallet">
+            </div>
+
+            <div class="info-list">
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">เบอร์วอลเลท (TrueMoney)</div>
+                        <div class="info-val" id="wallet-acc">082-464-1315</div>
+                    </div>
+                    <button class="btn-copy" onclick="copyText('wallet-acc')">คัดลอก</button>
+                </div>
+                <div class="info-item">
+                    <div>
+                        <div class="info-label">ชื่อบัญชี</div>
+                        <div class="info-val" id="cms-wallet-name">ms.vorawan n'</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <span><strong>บันทึกช่วยจำ:</strong> <span id="wallet-note">ยินดีโอนให้วรวรรณเอง</span></span>
+                <button class="btn-copy" onclick="copyText('wallet-note')">คัดลอก</button>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="user-amount-wallet">ระบุยอดเงินที่โอน (บาท):</label>
+                <input type="number" id="user-amount-wallet" class="amount-input" placeholder="0.00" step="any">
+            </div>
+
+            <p class="warning-text">โปรดตรวจสอบข้อมูลให้ถูกต้องก่อนกดชำระเงิน </p>
+
+            <button class="btn-primary" onclick="startPrinting('wallet')">ขั้นตอนถัดไป ( next step )</button>
+        </div>
+
+        <!-- ================= PAGE 4: PRINTER ANIMATION & SLIP ================= -->
+        <div class="card page" id="page-printer">
+            <h3 style="margin-bottom: 10px; font-weight: 600; color: var(--text-main);">Issuing a payment invoice.... </h3>
+            
+            <div class="printer-wrapper">
+                <div class="printer-head">
+                    <div class="printer-slot"></div>
+                </div>
+                
+                <div class="paper-roll" id="paper-roll">
+                    <div class="receipt-content" id="receipt-box">
+                        <div class="receipt-header">
+                            <h4 style="font-size: 1.05rem; color: var(--primary-rosy); font-weight: 700; letter-spacing: 0.5px;">PAYMENT RECEIPT</h4>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);" id="receipt-date">03/10/2026 03:03</p>
+                        </div>
+                        
+                        <div class="receipt-row">
+                            <span style="color: var(--text-muted);">รายการ:</span>
+                            <span style="font-weight: 600;">ชำระสินค้า / บริการ</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span style="color: var(--text-muted);">ผู้ชำระ:</span>
+                            <span>ลูกค้าทั่วไป</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span style="color: var(--text-muted);">ช่องทาง:</span>
+                            <span id="receipt-channel">โอนผ่านธนาคาร</span>
+                        </div>
+                        <hr style="border: none; border-top: 1px dashed var(--border-soft); margin: 10px 0;">
+                        <div class="receipt-row" style="font-size: 0.95rem;">
+                            <span style="font-weight: 600;">ยอดรวมทั้งสิ้น:</span>
+                            <span style="font-weight: 700; color: var(--primary-rosy);" id="receipt-amount">฿ 0.00</span>
+                        </div>
+
+                        <hr style="border: none; border-top: 1px dashed var(--border-soft); margin: 10px 0;">
+                        <div style="text-align: center; color: var(--primary-rosy); font-weight: 600; margin-top: 10px;">
+                            ✓ ชำระเงินสำเร็จ
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tear-hint" id="tear-hint" onclick="tearSlip()">
+                ✂ คลิกเพื่อฉีกสลิปชำระเงิน
+            </div>
+
+            <button class="btn-primary" id="btn-back-home" style="display: none; margin-top: 20px;" onclick="switchPage('home')">กลับไปหน้าหลัก</button>
+        </div>
+    </div>
+
+    <!-- SCRIPT SYSTEM CONTROLS -->
+    <script>
+        /* ===================================================
+           [จุดที่ 1] ดึงข้อมูลจาก Netlify CMS (config.json)
+           =================================================== */
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch('/config.json')
+              .then(res => res.json())
+              .then(CMS_DATA => {
+                if(CMS_DATA.shopName) document.getElementById('cms-shop-name').innerText = CMS_DATA.shopName;
+                if(CMS_DATA.shopDesc) document.getElementById('cms-shop-desc').innerText = CMS_DATA.shopDesc;
+                if(CMS_DATA.avatarUrl) document.getElementById('cms-avatar').src = CMS_DATA.avatarUrl;
+                if(CMS_DATA.coverUrl) document.getElementById('cms-cover').src = CMS_DATA.coverUrl;
+                
+                if(CMS_DATA.bankAccountNo) document.getElementById('bank-acc').innerText = CMS_DATA.bankAccountNo;
+                if(CMS_DATA.bankAccountName) document.getElementById('cms-bank-name').innerText = CMS_DATA.bankAccountName;
+                if(CMS_DATA.bankNote) document.getElementById('bank-note').innerText = CMS_DATA.bankNote;
+                
+                if(CMS_DATA.walletNo) document.getElementById('wallet-acc').innerText = CMS_DATA.walletNo;
+                if(CMS_DATA.walletName) document.getElementById('cms-wallet-name').innerText = CMS_DATA.walletName;
+                if(CMS_DATA.walletNote) document.getElementById('wallet-note').innerText = CMS_DATA.walletNote;
+                
+                if(CMS_DATA.qrBankUrl) document.getElementById('qr-bank').src = CMS_DATA.qrBankUrl;
+                if(CMS_DATA.qrWalletUrl) document.getElementById('qr-wallet').src = CMS_DATA.qrWalletUrl;
+              })
+              .catch(err => console.log('ยังไม่มีไฟล์ config.json ระบบจะแสดงผลค่าเริ่มต้นจาก HTML'));
+        });
+
+        /* ===================================================
+           NAVIGATION & SYSTEM CONTROLS
+           =================================================== */
+        let currentTab = 'bank';
+
+        function switchPage(pageId) {
+            if (pageId === 'bank' || pageId === 'wallet') {
+                currentTab = pageId;
+            }
+
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            if (pageId !== 'printer') {
+                const paperRoll = document.getElementById('paper-roll');
+                const tearHint = document.getElementById('tear-hint');
+                const btnBackHome = document.getElementById('btn-back-home');
+                
+                paperRoll.classList.remove('printing', 'receipt-detached');
+                tearHint.style.display = 'none';
+                btnBackHome.style.display = 'none';
+            }
+        }
+
+        /* Copy Functionality */
+        function copyText(elementId) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast("Copy successful !");
+                }).catch(() => {
+                    fallbackCopyText(textToCopy);
+                });
+            } else {
+                fallbackCopyText(textToCopy);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Copy successful !");
+            } catch (err) {
+                showToast("ไม่สามารถคัดลอกได้");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function handleQRHold(event) {
+            showToast("Image recording successful !");
+        }
+
+        /* ===================================================
+           PRINTER & RECEIPT ANIMATION LOGIC
+           =================================================== */
+        function startPrinting(type) {
+            switchPage('printer');
+            
+            const inputId = type === 'bank' ? 'user-amount-bank' : 'user-amount-wallet';
+            const inputAmount = document.getElementById(inputId).value;
+            const formattedAmount = inputAmount && !isNaN(inputAmount) 
+                ? parseFloat(inputAmount).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                : '0.00';
+            
+            document.getElementById('receipt-amount').innerText = `฿ ${formattedAmount}`;
+
+            document.getElementById('receipt-channel').innerText = 
+                currentTab === 'bank' ? 'โอนผ่านธนาคาร' : 'ทรูมันนี่ วอลเลท';
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('receipt-date').innerText = dateStr;
+
+            const paperRoll = document.getElementById('paper-roll');
+            const tearHint = document.getElementById('tear-hint');
+
+            setTimeout(() => {
+                paperRoll.classList.add('printing');
+            }, 300);
+
+            setTimeout(() => {
+                tearHint.style.display = 'block';
+            }, 2800);
+        }
+
+        function tearSlip() {
+            const paperRoll = document.getElementById('paper-roll');
+            const tearHint = document.getElementById('tear-hint');
+            const btnBackHome = document.getElementById('btn-back-home');
+
+            paperRoll.classList.add('receipt-detached');
+            tearHint.style.display = 'none';
+
+            setTimeout(() => {
+                btnBackHome.style.display = 'block';
+            }, 600);
+        }
+    </script>
+
+    <!-- [จุดที่ 3] เพิ่ม Script ดักฟังการล็อกอินเพื่อพาไปหน้า Admin -->
+    <script>
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", user => {
+          if (!user) {
+            window.netlifyIdentity.on("login", () => {
+              document.location.href = "/admin/";
+            });
+          }
+        });
+      }
+    </script>
+</body>
+</html>
