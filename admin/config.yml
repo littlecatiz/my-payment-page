@@ -1,0 +1,28 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "uploads"
+public_folder: "/uploads"
+
+collections:
+  - name: "settings"
+    label: "ตั้งค่าร้านค้า"
+    files:
+      - file: "config.json"
+        label: "ข้อมูลร้านและบัญชี"
+        name: "shop_info"
+        fields:
+          - { label: "ชื่อร้าน", name: "shopName", widget: "string" }
+          - { label: "คำอธิบายร้าน", name: "shopDesc", widget: "text" }
+          - { label: "รูปโปรไฟล์", name: "avatarUrl", widget: "image" }
+          - { label: "รูปปก (Cover)", name: "coverUrl", widget: "image" }
+          - { label: "เลขบัญชีธนาคาร", name: "bankAccountNo", widget: "string" }
+          - { label: "ชื่อบัญชีธนาคาร", name: "bankAccountName", widget: "string" }
+          - { label: "บันทึกช่วยจำ (ธนาคาร)", name: "bankNote", widget: "string" }
+          - { label: "QR Code ธนาคาร", name: "qrBankUrl", widget: "image" }
+          - { label: "เบอร์ TrueMoney Wallet", name: "walletNo", widget: "string" }
+          - { label: "ชื่อบัญชี Wallet", name: "walletName", widget: "string" }
+          - { label: "บันทึกช่วยจำ (Wallet)", name: "walletNote", widget: "string" }
+          - { label: "QR Code Wallet", name: "qrWalletUrl", widget: "image" }
+          
